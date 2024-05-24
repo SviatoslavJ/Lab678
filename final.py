@@ -1,55 +1,34 @@
-import argparse
 import json
 import os
 import sys
 import yaml
 import xml.etree.ElementTree as ET
-
-def parse_arguments():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("input_file", help="The input file containing JSON, YAML, or XML data")
-    parser.add_argument("output_file", help="The output file to save the data in JSON, YAML, or XML format")
-    return parser.parse_args()
+from tkinter import Tk, Label, Button, Entry, filedialog, StringVar, OptionMenu, messagebox
 
 def loading_json(input_file):
-    if not os.path.exists(input_file):
-        print(f"No such file: {input_file}")
-        sys.exit(1)
-    
     with open(input_file, "r") as file_js:
         try:
             json_obj = json.load(file_js)
             return json_obj
         except json.JSONDecodeError as e:
-            print(f"Error decoding JSON: {e}")
-            sys.exit(1)
+            raise Exception(f"Error decoding JSON: {e}")
 
 def loading_yaml(input_file):
-    if not os.path.exists(input_file):
-        print(f"No such file: {input_file}")
-        sys.exit(1)
-    
     with open(input_file, "r") as file_ym:
         try:
             yaml_obj = yaml.safe_load(file_ym)
             return yaml_obj
         except yaml.YAMLError as e:
-            print(f"Error decoding YAML: {e}")
-            sys.exit(1)
+            raise Exception(f"Error decoding YAML: {e}")
 
 def loading_xml(input_file):
-    if not os.path.exists(input_file):
-        print(f"No such file: {input_file}")
-        sys.exit(1)
-    
     try:
         tree = ET.parse(input_file)
         root = tree.getroot()
         xml_dict = ET_to_dict(root)
         return xml_dict
     except ET.ParseError as e:
-        print(f"Error decoding XML: {e}")
-        sys.exit(1)
+        raise Exception(f"Error decoding XML: {e}")
 
 def ET_to_dict(node):
     node_dict = {node.tag: {} if node.attrib else None}
@@ -118,36 +97,67 @@ def save_xml(obj, output_file):
     tree = dict_to_ET(obj)
     tree.write(output_file, encoding="utf-8", xml_declaration=True)
 
-def main():
-    args = parse_arguments()
-    input_file = args.input_file
-    output_file = args.output_file
-
+def convert_files(input_file, output_file):
     input_extension = os.path.splitext(input_file)[1].lower()
     output_extension = os.path.splitext(output_file)[1].lower()
     
     if input_extension == ".json":
         obj = loading_json(input_file)
-    elif input_extension == ".yml" or input_extension == ".yaml":
+    elif input_extension in [".yml", ".yaml"]:
         obj = loading_yaml(input_file)
     elif input_extension == ".xml":
         obj = loading_xml(input_file)
     else:
-        print("Input file is neither JSON, YAML, nor XML file")
-        sys.exit(1)
+        raise Exception("Input file is neither JSON, YAML, nor XML file")
 
     if output_extension == ".json":
         save_json(obj, output_file)
-    elif output_extension == ".yml" or output_extension == ".yaml":
+    elif output_extension in [".yml", ".yaml"]:
         save_yaml(obj, output_file)
     elif output_extension == ".xml":
         save_xml(obj, output_file)
     else:
-        print("Output file extension is not supported (use .json, .yml/.yaml, or .xml)")
-        sys.exit(1)
+        raise Exception("Output file extension is not supported (use .json, .yml/.yaml, or .xml)")
 
-if __name__ == "__main__":
-    main()
+def browse_input():
+    filename = filedialog.askopenfilename(filetypes=[("All Files", "*.*"), ("JSON files", "*.json"), ("YAML files", "*.yml *.yaml"), ("XML files", "*.xml")])
+    input_path.set(filename)
+
+def browse_output():
+    filename = filedialog.asksaveasfilename(filetypes=[("JSON files", "*.json"), ("YAML files", "*.yml *.yaml"), ("XML files", "*.xml")])
+    output_path.set(filename)
+
+def run_conversion():
+    input_file = input_path.get()
+    output_file = output_path.get()
+    if not input_file or not output_file:
+        messagebox.showerror("Error", "Both input and output files must be selected")
+        return
+
+    try:
+        convert_files(input_file, output_file)
+        messagebox.showinfo("Success", f"File converted and saved to {output_file}")
+    except Exception as e:
+        messagebox.showerror("Error", str(e))
+
+app = Tk()
+app.title("File Converter")
+
+input_path = StringVar()
+output_path = StringVar()
+
+Label(app, text="Input File:").grid(row=0, column=0, padx=10, pady=10)
+Entry(app, textvariable=input_path, width=50).grid(row=0, column=1, padx=10, pady=10)
+Button(app, text="Browse", command=browse_input).grid(row=0, column=2, padx=10, pady=10)
+
+Label(app, text="Output File:").grid(row=1, column=0, padx=10, pady=10)
+Entry(app, textvariable=output_path, width=50).grid(row=1, column=1, padx=10, pady=10)
+Button(app, text="Browse", command=browse_output).grid(row=1, column=2, padx=10, pady=10)
+
+Button(app, text="Convert", command=run_conversion).grid(row=2, column=0, columnspan=3, pady=20)
+
+app.mainloop()
+
 
 
 
